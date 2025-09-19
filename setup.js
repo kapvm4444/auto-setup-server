@@ -2,6 +2,13 @@ import { select, checkbox } from "@inquirer/prompts";
 import { execSync } from "child_process";
 import fs from "fs";
 import readline from "readline-sync";
+import Art from "ascii-art";
+import figlet from "figlet";
+
+//1 sec delay for warnings and info
+setTimeout(() => {
+  console.clear();
+}, 1000);
 
 // --- Color Definitions for Node.js ---
 // An object holding ANSI escape codes for different colors.
@@ -13,6 +20,19 @@ const colors = {
   FgBlue: "\x1b[34m",
   FgCyan: "\x1b[36m",
 };
+
+function printWelcomeMsg() {
+  console.log(figlet.textSync("Welcome!", { font: "ANSI Shadow" }));
+}
+
+function printThankYouMsg() {
+  console.log(figlet.textSync("Thanks for using!", { font: "Future" }));
+  console.log(figlet.textSync("by Khush Vachhani!", { font: "Future" }));
+  console.log(
+    `${colors.FgGreen}Checkout my github: ${colors.FgCyan}"kapvm4444"${colors.Reset}`,
+  );
+  console.log(`${colors.FgRed}Happy Hacking!`);
+}
 
 // --- Helper Function to Run Commands ---
 // This function now highlights the command it is about to run.
@@ -74,6 +94,9 @@ const initialServerSetup = () => {
 // The main function that runs our entire setup
 async function main() {
   console.clear();
+
+  printWelcomeMsg();
+
   // Prints a welcome message in green.
   console.log(`${colors.FgGreen}====================================`);
   console.log("  Welcome to the Server Setup Tool  ");
@@ -117,7 +140,7 @@ async function main() {
   //NEW VERSION OF INQUIRER
   //selecting webserver
   const webserver = await select({
-    message: "Select a web server:",
+    message: "Select a web server: (Use up and down key to navigate)",
     choices: [
       { name: "Nginx", value: "Nginx" },
       { name: "Apache", value: "Apache" },
@@ -125,26 +148,32 @@ async function main() {
     ],
   });
 
+  //DEV TOOLS
+  const tools = await checkbox({
+    message:
+      "Select languages and tools (Use up and down key to navigate and space-bar to select): ",
+    choices: [
+      { name: "Node.js (Keep Installed)", value: "Node.js (Keep Installed)" },
+      { name: "PHP FPM", value: "PHP FPM" },
+      { name: "Composer", value: "Composer" },
+      {
+        name: "NPM (Node Package manager)",
+        value: "Node.js (Keep Installed)",
+      },
+      { name: "phpmyadmin", value: "phpmyadmin" },
+      { name: "PM2", value: "PM2" },
+      { name: "Git", value: "Git" },
+      { name: "NONE", value: "None" },
+    ],
+  });
+
   //selecting database
   const database = await select({
-    message: "Select a database:",
+    message: "Select a database: (Use up and down key to navigate)",
     choices: [
       { name: "MySQL", value: "MySQL" },
       { name: "MongoDB", value: "MongoDB" },
       { name: "None", value: "None" },
-    ],
-  });
-
-  //DEV TOOLS
-  const tools = await checkbox({
-    message: "Select languages and tools (spacebar to select):",
-    choices: [
-      { name: "Node.js (Keep Installed)", value: "Node.js (Keep Installed)" },
-      { name: "PHP & Composer", value: "PHP & Composer" },
-      { name: "Python 3 & pip", value: "Python 3 & pip" },
-      { name: "Docker & Docker Compose", value: "Docker & Docker Compose" },
-      { name: "Certbot (for SSL)", value: "Certbot (for SSL)" },
-      { name: "NONE", value: "None" },
     ],
   });
 
@@ -170,8 +199,8 @@ async function main() {
     runCommand("sudo ufw allow 'Nginx HTTP'", "Allow Nginx to firewall");
     runCommand("sudo ufw status", "Check allowed Nginx in ufw");
     runCommand(
-      '[ "$(curl -w \'\%{http_code}\' http://localhost)" = "200" ]',
-      "Verifying Apache is running (HTTP 200 OK)",
+      'bash -c "[ \\"$(curl -s -o /dev/null -w %{http_code} http://localhost)\\" = \\"200\\" ]"',
+      "Verifying Nginx is running (HTTP 200 OK)",
     );
     runCommand(
       "systemctl is-active --quiet nginx",
@@ -217,19 +246,26 @@ async function main() {
       "sudo systemctl enable mysql.service",
       "enable MySQL service for startup",
     );
-  } else if (database === "MongoDB") {
-    // => MongoDB
-    runCommand("apt-get install -y gnupg", "Installing gnupg for MongoDB");
+  }
+  //MONGODB Done
+  else if (database === "MongoDB") {
+    // => MongoDB -
     runCommand(
-      "curl -fsSL https://pgp.mongodb.com/server-6.0.asc | gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor",
+      "sudo apt-get install gnupg curl",
+      "Installing gnupg for MongoDB",
+    );
+    runCommand(
+      "curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
+   sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+   --dearmor",
       "Adding MongoDB GPG key",
     );
     runCommand(
-      'echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list',
+      'echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list',
       "Adding MongoDB repository",
     );
-    runCommand("apt-get update", "Updating package lists for MongoDB");
-    runCommand("apt-get install -y mongodb-org", "Installing MongoDB");
+    runCommand("sudo apt-get update", "Updating package lists for MongoDB");
+    runCommand("sudo apt-get install -y mongodb-org", "Installing MongoDB");
     runCommand(
       "systemctl start mongod && systemctl enable mongod",
       "Starting and enabling MongoDB",
@@ -238,7 +274,12 @@ async function main() {
 
   //NOTE -------------------TOOLS
 
-  if (tools.includes("PHP & Composer")) {
+  //=> NODEJS -
+  if (tools.includes("Node.js (Keep Installed)")) {
+    //DO NOTHING because it is already installed in pre-requisites
+  }
+  //=> PHP FPM
+  if (tools.includes("PHP FPM")) {
     runCommand(
       "apt-get install -y php-cli php-fpm php-mysql php-xml php-curl",
       "Installing PHP",
@@ -248,33 +289,40 @@ async function main() {
       "Installing Composer",
     );
   }
-  if (tools.includes("Python 3 & pip")) {
+  //=> COMPOSER
+  if (tools.includes("Composer")) {
     runCommand(
       "apt-get install -y python3 python3-pip",
       "Installing Python 3 & pip",
     );
   }
-  if (tools.includes("Docker & Docker Compose")) {
-    runCommand(
-      "apt-get install -y docker.io docker-compose",
-      "Installing Docker & Docker Compose",
-    );
-    runCommand(
-      "systemctl start docker && systemctl enable docker",
-      "Starting and enabling Docker",
-    );
+  //=> NPM -
+  if (tools.includes("NPM (Node Package Manager)")) {
+    //DO NOTHING because it is already installed in pre-requisites
   }
-  if (tools.includes("Certbot (for SSL)")) {
+  //=> PHPMYADMIN
+  if (tools.includes("phpmyadmin")) {
     runCommand(
       "apt-get install -y certbot python3-certbot-nginx",
       "Installing Certbot",
     );
   }
+  //=> PM2 -
+  if (tools.includes("PM2")) {
+    runCommand("sudo npm install pm2 -g", "Installing PM2");
+    runCommand("pm2 list", "Checking PM2");
+  }
+  //=> GIT -
+  if (tools.includes("Git")) {
+    runCommand("sudo apt-get install git", "Installing Git");
+  }
 
   // Prints a final completion message.
   console.log(`\n${colors.FgGreen}====================================`);
-  console.log("      🚀>> Server Setup Complete! <<🚀     ");
+  console.log("      🚀 >> Server Setup Complete! << 🚀     ");
   console.log(`====================================${colors.Reset}`);
+
+  printThankYouMsg();
 }
 
 // Starts the main function.
