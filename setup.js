@@ -24,22 +24,42 @@ const colors = {
 
 function printWelcomeMsg() {
   console.log(
-    figlet.textSync("Welcome to", { font: "ANSI Shadow" }),
-    figlet.textSync("Loki ;)!", { font: "ANSI Shadow" }),
-    figlet.textSync("A Server Automation Tool", { font: "Future" }),
+    figlet.textSync("Welcome to Loki!", {
+      font: "ANSI Shadow",
+      horizontalLayout: "full",
+    }),
+    figlet.textSync("A Server Automation Tool", {
+      font: "Future",
+      horizontalLayout: "full",
+    }),
   );
 }
 
 function printThankYouMsg() {
-  console.log(figlet.textSync("Thanks for using!", { font: "ANSI Shadow" }));
+  console.log(
+    figlet.textSync("Thanks for using!", {
+      font: "ANSI Shadow",
+      horizontalLayout: "full",
+    }),
+  );
 
   console.log(
-    figlet.textSync("Made by Khush Vachhani!", { font: "ANSI Shadow" }),
+    figlet.textSync("Made by Khush Vachhani!", {
+      font: "ANSI Shadow",
+      horizontalLayout: "full",
+    }),
   );
   console.log(`${colors.FgGreen}`);
-  console.log(figlet.textSync("Checkout Github", { font: "Future" }));
+  console.log(
+    figlet.textSync("Checkout Github", {
+      font: "Future",
+      horizontalLayout: "full",
+    }),
+  );
   console.log(`${colors.FgCyan}`);
-  console.log(figlet.textSync("kapvm4444", { font: "Future" }));
+  console.log(
+    figlet.textSync("kapvm4444", { font: "Future", horizontalLayout: "full" }),
+  );
   console.log(`${colors.Reset}`);
   console.log(`${colors.FgRed}Happy Hacking!`);
 }
@@ -164,6 +184,7 @@ async function main() {
   const tools = await checkbox({
     message:
       "Select languages and tools (Use up and down key to navigate and space-bar to select): ",
+    pageSize: 10,
     choices: [
       { name: "Node.js (Keep Installed)", value: "Node.js (Keep Installed)" },
       { name: "PHP FPM", value: "PHP FPM" },
