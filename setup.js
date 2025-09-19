@@ -21,15 +21,24 @@ const colors = {
 };
 
 function printWelcomeMsg() {
-  console.log(figlet.textSync("Welcome!", { font: "ANSI Shadow" }));
+  console.log(
+    figlet.textSync("Welcome to", { font: "ANSI Shadow" }),
+    figlet.textSync("Loki ;)!", { font: "ANSI Shadow" }),
+    figlet.textSync("A Server Automation Tool", { font: "Future" }),
+  );
 }
 
 function printThankYouMsg() {
-  console.log(figlet.textSync("Thanks for using!", { font: "Future" }));
-  console.log(figlet.textSync("by Khush Vachhani!", { font: "Future" }));
+  console.log(figlet.textSync("Thanks for using!", { font: "ANSI Shadow" }));
+
   console.log(
-    `${colors.FgGreen}Checkout my github: ${colors.FgCyan}"kapvm4444"${colors.Reset}`,
+    figlet.textSync("Made by Khush Vachhani!", { font: "ANSI Shadow" }),
   );
+  console.log(`${colors.FgGreen}`);
+  console.log(figlet.textSync("Checkout Github", { font: "Future" }));
+  console.log(`${colors.FgCyan}`);
+  console.log(figlet.textSync("kapvm4444", { font: "Future" }));
+  console.log(`${colors.Reset}`);
   console.log(`${colors.FgRed}Happy Hacking!`);
 }
 
