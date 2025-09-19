@@ -4,10 +4,12 @@ import fs from "fs";
 import readline from "readline-sync";
 import figlet from "figlet";
 
-//1 sec delay for warnings and info
-setTimeout(() => {
-  console.clear();
-}, 1000);
+const clearCmd = () => {
+  //1 sec delay for warnings and info
+  setTimeout(() => {
+    console.clear();
+  }, 1000);
+};
 
 // --- Color Definitions for Node.js ---
 // An object holding ANSI escape codes for different colors.
@@ -144,6 +146,8 @@ async function main() {
       ],
     },
   ]);*/
+
+  clearCmd();
 
   //NEW VERSION OF INQUIRER
   //selecting webserver
