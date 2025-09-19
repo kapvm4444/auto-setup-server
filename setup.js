@@ -35,6 +35,7 @@ function printWelcomeMsg() {
       horizontalLayout: "full",
     }),
   );
+  console.log(`${colors.FgYellow}`);
   console.log(
     figlet.textSync("A Server Automation Tool", {
       font: "Future",
@@ -70,6 +71,7 @@ function printThankYouMsg() {
   );
   console.log(`${colors.Reset}`);
   console.log(`${colors.FgRed}Happy Hacking!`);
+  console.log(`${colors.Reset}`);
 }
 
 // --- Helper Function to Run Commands ---
