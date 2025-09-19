@@ -2,7 +2,6 @@ import { select, checkbox } from "@inquirer/prompts";
 import { execSync } from "child_process";
 import fs from "fs";
 import readline from "readline-sync";
-import Art from "ascii-art";
 import figlet from "figlet";
 
 //1 sec delay for warnings and info
