@@ -1,4 +1,4 @@
-const inquirer = require("inquirer");
+import { select, checkbox } from "@inquirer/prompts";
 const { execSync } = require("child_process");
 const fs = require("fs");
 const readline = require("readline-sync");
@@ -85,8 +85,8 @@ async function main() {
   // run initial server setup commands
   initialServerSetup();
 
-  // --- Interactive Prompts ---
-  const answers = await inquirer.prompt([
+  // --- Interactive Prompts --- //OLD PACKAGE NOT RECOMMENDED
+  /*const answers = await inquirer.prompt([
     {
       type: "list",
       name: "webserver",
@@ -112,23 +112,58 @@ async function main() {
         "None",
       ],
     },
-  ]);
+  ]);*/
+
+  //NEW VERSION OF INQUIRER
+  //selecting webserver
+  const webserver = await select({
+    message: "Select a web server:",
+    choices: [
+      { name: "Nginx", value: "Nginx" },
+      { name: "Apache", value: "Apache" },
+      { name: "None", value: "None" },
+    ],
+  });
+
+  //selecting database
+  const database = await select({
+    message: "Select a database:",
+    choices: [
+      { name: "MySQL", value: "MySQL" },
+      { name: "MongoDB", value: "MongoDB" },
+      { name: "None", value: "None" },
+    ],
+  });
+
+  //DEV TOOLS
+  const tools = await checkbox({
+    message: "Select languages and tools (spacebar to select):",
+    choices: [
+      { name: "Node.js (Keep Installed)", value: "Node.js (Keep Installed)" },
+      { name: "PHP & Composer", value: "PHP & Composer" },
+      { name: "Python 3 & pip", value: "Python 3 & pip" },
+      { name: "Docker & Docker Compose", value: "Docker & Docker Compose" },
+      { name: "Certbot (for SSL)", value: "Certbot (for SSL)" },
+      { name: "NONE", value: "None" },
+    ],
+  });
 
   // --- Save Choices for the Bash Script ---
   // This writes the user's tool selections to a temporary file.
-  fs.writeFileSync("/tmp/setup_choices.txt", JSON.stringify(answers.tools));
+  fs.writeFileSync("/tmp/setup_choices.txt", JSON.stringify(tools));
 
   // --- Installation Phase ---
   console.log(
     `\n${colors.FgYellow}Starting installation based on your selections...${colors.Reset}`,
   );
 
+  //NOTE  -------------------SERVERS
+
   console.log(
     `${colors.FgCyan}==========  Setting Up Web Server  ==========${colors.Reset}`,
   );
 
-  //NOTE  -------------------SERVERS
-  if (answers.webserver === "Nginx") {
+  if (webserver === "Nginx") {
     //=> NGINX
 
     runCommand("sudo apt install nginx -y", "Installing Nginx");
@@ -147,7 +182,7 @@ async function main() {
     console.log(
       `${colors.FgGreen}====> Nginx Installed Successfully!${colors.Reset}`,
     );
-  } else if (answers.webserver === "Apache") {
+  } else if (webserver === "Apache") {
     //=> Apache
 
     runCommand("sudo apt install apache2 -y", "Installing Apache");
@@ -174,7 +209,7 @@ async function main() {
     `${colors.FgCyan}==========  Setting Up Database  ==========${colors.Reset}`,
   );
 
-  if (answers.database === "MySQL") {
+  if (database === "MySQL") {
     // => MySQL
     runCommand("sudo apt install -y mysql-server", "Installing MySQL");
     runCommand("sudo systemctl start mysql.service", "Start MySQL service");
@@ -182,7 +217,7 @@ async function main() {
       "sudo systemctl enable mysql.service",
       "enable MySQL service for startup",
     );
-  } else if (answers.database === "MongoDB") {
+  } else if (database === "MongoDB") {
     // => MongoDB
     runCommand("apt-get install -y gnupg", "Installing gnupg for MongoDB");
     runCommand(
@@ -201,7 +236,9 @@ async function main() {
     );
   }
 
-  if (answers.tools.includes("PHP & Composer")) {
+  //NOTE -------------------TOOLS
+
+  if (tools.includes("PHP & Composer")) {
     runCommand(
       "apt-get install -y php-cli php-fpm php-mysql php-xml php-curl",
       "Installing PHP",
@@ -211,13 +248,13 @@ async function main() {
       "Installing Composer",
     );
   }
-  if (answers.tools.includes("Python 3 & pip")) {
+  if (tools.includes("Python 3 & pip")) {
     runCommand(
       "apt-get install -y python3 python3-pip",
       "Installing Python 3 & pip",
     );
   }
-  if (answers.tools.includes("Docker & Docker Compose")) {
+  if (tools.includes("Docker & Docker Compose")) {
     runCommand(
       "apt-get install -y docker.io docker-compose",
       "Installing Docker & Docker Compose",
@@ -227,7 +264,7 @@ async function main() {
       "Starting and enabling Docker",
     );
   }
-  if (answers.tools.includes("Certbot (for SSL)")) {
+  if (tools.includes("Certbot (for SSL)")) {
     runCommand(
       "apt-get install -y certbot python3-certbot-nginx",
       "Installing Certbot",
