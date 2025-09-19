@@ -96,15 +96,15 @@ const runCommand = (command, description) => {
 
       if (choice === 1) {
         // Skip
-        console.log("Skipping...");
+        console.log(`Skipping...${colors.Reset}`);
         break; // Exit the loop and move to the next command
       } else if (choice === 2) {
         // Abort or user pressed Cancel
-        console.log("Aborting setup.");
+        console.log(`Aborting setup.${colors.Reset}`);
         process.exit(1); // Exit the entire script
       } else {
         // Retry
-        console.log("Retrying...");
+        console.log(`Retrying...${colors.Reset}`);
         continue; // The loop will run the command again
       }
     }
