@@ -24,10 +24,18 @@ const colors = {
 
 function printWelcomeMsg() {
   console.log(
-    figlet.textSync("Welcome to Loki!", {
+    figlet.textSync("Welcome to", {
       font: "ANSI Shadow",
       horizontalLayout: "full",
     }),
+  );
+  console.log(
+    figlet.textSync("Loki :)!", {
+      font: "ANSI Shadow",
+      horizontalLayout: "full",
+    }),
+  );
+  console.log(
     figlet.textSync("A Server Automation Tool", {
       font: "Future",
       horizontalLayout: "full",
