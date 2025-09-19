@@ -5,11 +5,11 @@ set -e
 # Defines variables for different colors to make output readable.
 # The \\033[ is the escape code, followed by a color code.
 # NC (No Color) resets the text back to default.
-RED='\\033[0;31m'
-GREEN='\\033[0;32m'
-YELLOW='\\033[1;33m'
-BLUE='\\033[0;34m'
-NC='\\033[0m' # No Color
+RED='\e[31m'
+GREEN='\e[32m'
+YELLOW='\e[33m'
+BLUE='\e[34m'
+NC='\e[0m' # No Color
 
 #-> --- STAGE 1: BOOTSTRAP ---
 echo -e "${BLUE}======== Temporarily installing Node.js for interactive menu ========${NC}"
@@ -25,7 +25,8 @@ node -v
 echo -e ""
 
 # Go to the script directory to install inquirer
-echo -e "${YELLOW}Installing 'inquirer' for the interactive menu...${NC}"
+cd /tmp/
+echo -e "${YELLOW}Installing Dependencies...${NC}"
 npm install
 
 #-> ======== STAGE 2: EXECUTE INTERACTIVE SCRIPT ========

@@ -32,6 +32,7 @@ const runCommand = (command, description) => {
       console.log(
         `${colors.FgGreen}--- SUCCESS: ${description} ---${colors.Reset}`,
       );
+      success = true;
     } catch (error) {
       console.error(
         `${colors.FgRed}--- FAILED: ${description} ---${colors.Reset}`,
@@ -61,7 +62,6 @@ const runCommand = (command, description) => {
 };
 
 const initialServerSetup = () => {
-  runCommand("ufw app list", "List the UFW Profiles");
   runCommand("ufw allow OpenSSH", "Allow OpenSSH through firewall");
   runCommand("yes | ufw enable", "Enable the firewall");
   runCommand("ufw status", "See your enabled ");
