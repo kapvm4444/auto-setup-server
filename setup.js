@@ -1,7 +1,7 @@
 import { select, checkbox } from "@inquirer/prompts";
-const { execSync } = require("child_process");
-const fs = require("fs");
-const readline = require("readline-sync");
+import { execSync } from "child_process";
+import fs from "fs";
+import readline from "readline-sync";
 
 // --- Color Definitions for Node.js ---
 // An object holding ANSI escape codes for different colors.
