@@ -12,7 +12,7 @@ BLUE='\e[34m'
 NC='\e[0m' # No Color
 
 #-> --- STAGE 1: BOOTSTRAP ---
-echo -e "${BLUE}======== Temporarily installing Node.js for interactive menu ========${NC}"
+echo -e "${BLUE}======== Temporarily installing Node.js for Navigation ========${NC}"
 # All commands now print their full output to the screen.
 apt-get update
 apt-get install -y curl
@@ -30,7 +30,7 @@ echo -e "${YELLOW}Installing Dependencies...${NC}"
 npm install
 
 #-> ======== STAGE 2: EXECUTE INTERACTIVE SCRIPT ========
-echo -e "${BLUE}======== Starting Interactive Setup ========${NC}"
+echo -e "${BLUE}======== Starting Setup ========${NC}"
 # This command runs the main interactive script.
 node setup.js
 
