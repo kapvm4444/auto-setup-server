@@ -1,4 +1,4 @@
-import { select, checkbox } from "@inquirer/prompts";
+import { select, checkbox, password } from "@inquirer/prompts";
 import { execSync } from "child_process";
 import fs from "fs";
 import readline from "readline-sync";
@@ -235,9 +235,8 @@ async function main() {
     `${colors.FgCyan}==========  Setting Up Web Server  ==========${colors.Reset}`,
   );
 
+  //=> NGINX
   if (webserver === "Nginx") {
-    //=> NGINX
-
     runCommand("sudo apt install nginx -y", "Installing Nginx");
     runCommand("sudo ufw allow 'Nginx HTTP'", "Allow Nginx to firewall");
     runCommand("sudo ufw status", "Check allowed Nginx in ufw");
@@ -254,16 +253,12 @@ async function main() {
     console.log(
       `${colors.FgGreen}====> Nginx Installed Successfully!${colors.Reset}`,
     );
-  } else if (webserver === "Apache") {
-    //=> Apache
-
+  }
+  //=> Apache
+  else if (webserver === "Apache") {
     runCommand("sudo apt install apache2 -y", "Installing Apache");
     runCommand('sudo ufw allow in "Apache"', "Enable apache in ufw");
     runCommand("sudo ufw status", "Check allowed apache in ufw");
-    runCommand(
-      '[ "$(curl -w \'\%{http_code}\' http://localhost)" = "200" ]',
-      "Verifying Apache is running (HTTP 200 OK)",
-    );
     runCommand(
       "systemctl is-active --quiet apache2",
       "Checking if Apache service is active",
@@ -275,24 +270,247 @@ async function main() {
     );
   }
 
+  //NOTE -------------------TOOLS
+
+  //=> NODEJS
+  if (tools.includes("Node.js (Keep Installed)")) {
+    //DO NOTHING because it is already installed in pre-requisites
+  }
+  //=> PHP FPM
+  if (tools.includes("PHP FPM")) {
+    const selectedPhpVersions = await checkbox({
+      message:
+        "Select PHP-FPM versions to install (spacebar to select and arrow keys to navigate):",
+      choices: [
+        { name: "PHP 7.4", value: "7.4" },
+        { name: "PHP 8.0", value: "8.0" },
+        { name: "PHP 8.1", value: "8.1" },
+        { name: "PHP 8.2", value: "8.2" },
+        { name: "PHP 8.3", value: "8.3" },
+        { name: "PHP 8.4", value: "8.4" },
+        { name: "PHP 8.5", value: "8.5" },
+      ],
+    });
+
+    // If no versions are selected, do nothing.
+    if (selectedPhpVersions.length > 0) {
+      runCommand(
+        "sudo apt-get install software-properties-common -y",
+        "Installing common files",
+      );
+
+      runCommand(
+        "sudo add-apt-repository ppa:ondrej/php -y",
+        "Installing ppa:ondrej/php",
+      );
+
+      runCommand("sudo apt-get update -y", "Refreshing Package Manager");
+
+      for (const version of selectedPhpVersions) {
+        console.log(`\n--- Installing PHP ${version} ---`);
+        const packages = `php${version} php${version}-fpm php${version}-mysql libapache2-mod-php${version} libapache2-mod-fcgid`;
+
+        runCommand(
+          `sudo apt-get install -y ${packages}`,
+          `Installing PHP ${version} and common extensions`,
+        );
+
+        runCommand(
+          `sudo systemctl start php${version}-fpm`,
+          `Installing PHP ${version} and common extensions`,
+        );
+      }
+
+      runCommand(
+        "sudo a2enmod actions fcgid alias proxy_fcgi",
+        "updating Apache Config",
+      );
+
+      runCommand("sudo systemctl restart apache2", "Restarting Apache Service");
+    }
+
+    runCommand(
+      "apt-get install -y php-cli php-fpm php-mysql php-xml php-curl",
+      "Installing PHP",
+    );
+    runCommand(
+      "curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer",
+      "Installing Composer",
+    );
+  }
+  //=> COMPOSER
+  if (tools.includes("Composer")) {
+    runCommand("apt-get install -y unzip", "Installing Unzip for Composer");
+
+    let isVerified = false;
+    while (!isVerified) {
+      runCommand(
+        "curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php",
+        "Downloading Composer installer",
+      );
+
+      const verificationCommand = `HASH=$(curl -sS https://composer.github.io/installer.sig) && php -r "if (hash_file('SHA384', '/tmp/composer-setup.php') === getenv('HASH')) { echo 'Installer verified.'; exit(0); } else { echo 'Installer corrupt.'; exit(1); }"`;
+
+      try {
+        console.log("Verifying installer integrity...");
+        execSync(verificationCommand, { stdio: "inherit" });
+        isVerified = true;
+      } catch (error) {
+        console.error("Verification failed. Re-downloading...");
+      }
+    }
+
+    runCommand(
+      "sudo php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer",
+      "Installing Composer globally",
+    );
+    runCommand("composer --version", "Verifying Composer installation");
+  }
+  //=> NPM
+  if (tools.includes("NPM (Node Package Manager)")) {
+    //DO NOTHING because it is already installed in pre-requisites
+  }
+
+  //=> PM2
+  if (tools.includes("PM2")) {
+    runCommand("sudo npm install pm2 -g", "Installing PM2");
+    runCommand("pm2 list", "Checking PM2");
+  }
+  //=> GIT
+  if (tools.includes("Git")) {
+    runCommand("sudo apt-get install git", "Installing Git");
+  }
+
   //NOTE -------------------Databases
 
   console.log(
     `${colors.FgCyan}==========  Setting Up Database  ==========${colors.Reset}`,
   );
 
+  // => MySQL
   if (database === "MySQL") {
-    // => MySQL
-    runCommand("sudo apt install -y mysql-server", "Installing MySQL");
-    runCommand("sudo systemctl start mysql.service", "Start MySQL service");
+    runCommand("sudo apt install mysql-server -y", "Installing MySQL");
+
+    /*NOT NEEDED, ALREADY INCLUDED IN mysql_secure_installation command
+      let passwordGood = false;
+    let rootPassword, retryRootPassword;
+
+    while (!passwordGood) {
+      rootPassword = await password({ message: "Enter MySQL root password" });
+      retryRootPassword = await password({
+        message: "Re-type MySQL root password",
+      });
+
+      if (rootPassword === retryRootPassword) passwordGood = true;
+    }*/
+  }
+
+  //=> PHPMYADMIN
+  if (tools.includes("phpmyadmin")) {
+    // --- Step 1: Installation ---
+    // Acknowledge the interactive part of the installation
+    console.log(
+      `\n${colors.FgYellow}ATTENTION:${colors.Reset} The next step is interactive.` +
+        `\n1. At the 'Configuring phpmyadmin' screen, press SPACE to select 'apache2'.` +
+        `\n2. Press ENTER to select 'Ok'.` +
+        `\n3. Select 'Yes' to configure the database with dbconfig-common.` +
+        `\n4. Enter a password for the phpmyadmin user when prompted.`,
+    );
+    readline.keyInPause("Press any key to continue..."); // Pause script to let user read
+
+    // Install phpMyAdmin and its extensions. The '-y' will handle most prompts, but not the configuration screen.
     runCommand(
-      "sudo systemctl enable mysql.service",
-      "enable MySQL service for startup",
+      "apt-get install -y phpmyadmin php-mbstring php-zip php-gd php-json php-curl",
+      "Installing phpMyAdmin",
+    );
+
+    // Enable the mbstring extension
+    runCommand("phpenmod mbstring", "Enabling PHP mbstring extension");
+    runCommand("systemctl restart apache2", "Restarting Apache");
+
+    // set root user password
+    runCommand(
+      `sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '12345678'"`,
+      "Setting root password to '12345678' for now (You will change it later)",
+    );
+    runCommand(
+      `sudo mysql_secure_installation`,
+      "Setting security rules for the database password",
+    );
+
+    console.log(
+      `${colors.FgGreen}phpMyAdmin installed successfully.${colors.Reset}`,
+    );
+
+    // --- Step 2: Add Extra Security Layer (.htaccess gateway) ---
+    const addHtaccess = await confirm({
+      message:
+        "Do you want to add an extra layer of password protection to phpMyAdmin (Recommended)?",
+    });
+
+    if (addHtaccess) {
+      console.log("\n--- Configuring Apache .htaccess security ---");
+
+      // Prompt for the new username and password
+      const gatewayUser = await input({
+        message: "Enter a username for the security gateway:",
+      });
+      const gatewayPass = await password({
+        message: `Enter a password for ${gatewayUser}:`,
+      });
+
+      // Enable .htaccess overrides for the phpmyadmin directory
+      const apacheConf = `
+<Directory /usr/share/phpmyadmin>
+    AllowOverride All
+</Directory>
+    `;
+      fs.writeFileSync("/tmp/phpmyadmin-override.conf", apacheConf);
+      runCommand(
+        "sudo mv /tmp/phpmyadmin-override.conf /etc/apache2/conf-available/phpmyadmin-override.conf",
+        "Creating phpMyAdmin Apache config override",
+      );
+      runCommand(
+        "sudo a2enconf phpmyadmin-override",
+        "Enabling config override",
+      );
+
+      // Create the .htaccess file
+      const htaccessContent = `
+AuthType Basic
+AuthName "Restricted Access"
+AuthUserFile /etc/phpmyadmin/.htpasswd
+Require valid-user
+    `;
+      fs.writeFileSync("/tmp/.htaccess", htaccessContent);
+      runCommand(
+        "sudo mv /tmp/.htaccess /usr/share/phpmyadmin/.htaccess",
+        "Creating .htaccess file for phpMyAdmin",
+      );
+
+      // Create the password file using the htpasswd utility
+      runCommand(
+        `sudo htpasswd -c -b /etc/phpmyadmin/.htpasswd ${gatewayUser} ${gatewayPass}`,
+        "Creating gateway user",
+      );
+
+      // Restart Apache to apply all changes
+      runCommand(
+        "systemctl restart apache2",
+        "Restarting Apache to enable security",
+      );
+      console.log(
+        `${colors.FgGreen}Security gateway enabled. You will now need two passwords to log in.${colors.Reset}`,
+      );
+    }
+
+    console.log(
+      `\nphpMyAdmin setup complete. You can access it at http://your_server_ip/phpmyadmin`,
     );
   }
-  //MONGODB Done
+
+  // => MongoDB
   else if (database === "MongoDB") {
-    // => MongoDB -
     runCommand(
       "sudo apt-get install gnupg curl",
       "Installing gnupg for MongoDB",
@@ -315,55 +533,14 @@ async function main() {
     );
   }
 
-  //NOTE -------------------TOOLS
-
-  //=> NODEJS -
-  if (tools.includes("Node.js (Keep Installed)")) {
-    //DO NOTHING because it is already installed in pre-requisites
-  }
-  //=> PHP FPM
-  if (tools.includes("PHP FPM")) {
-    runCommand(
-      "apt-get install -y php-cli php-fpm php-mysql php-xml php-curl",
-      "Installing PHP",
-    );
-    runCommand(
-      "curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer",
-      "Installing Composer",
-    );
-  }
-  //=> COMPOSER
-  if (tools.includes("Composer")) {
-    runCommand(
-      "apt-get install -y python3 python3-pip",
-      "Installing Python 3 & pip",
-    );
-  }
-  //=> NPM -
-  if (tools.includes("NPM (Node Package Manager)")) {
-    //DO NOTHING because it is already installed in pre-requisites
-  }
-  //=> PHPMYADMIN
-  if (tools.includes("phpmyadmin")) {
-    runCommand(
-      "apt-get install -y certbot python3-certbot-nginx",
-      "Installing Certbot",
-    );
-  }
-  //=> PM2 -
-  if (tools.includes("PM2")) {
-    runCommand("sudo npm install pm2 -g", "Installing PM2");
-    runCommand("pm2 list", "Checking PM2");
-  }
-  //=> GIT -
-  if (tools.includes("Git")) {
-    runCommand("sudo apt-get install git", "Installing Git");
-  }
-
   // Prints a final completion message.
-  console.log(`\n${colors.FgGreen}====================================`);
+  console.log(
+    `\n${colors.FgGreen}========================================================`,
+  );
   console.log("      🚀 >> Server Setup Complete! << 🚀     ");
-  console.log(`====================================${colors.Reset}`);
+  console.log(
+    `========================================================${colors.Reset}`,
+  );
 
   printThankYouMsg();
 }
