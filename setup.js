@@ -367,7 +367,6 @@ async function main() {
       "sudo php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer",
       "Installing Composer globally",
     );
-    runCommand("composer --version", "Verifying Composer installation");
   }
   //=> NPM
   if (tools.includes("NPM (Node Package Manager)")) {
@@ -425,9 +424,16 @@ async function main() {
       "Installing phpMyAdmin",
     );
 
+    // Ensure Apache config for phpMyAdmin is enabled
+    runCommand("sudo a2enconf phpmyadmin", "Enable phpMyAdmin Apache config");
     runCommand(
-      `sudo mysql_secure_installation`,
-      "Setting security rules for the database password",
+      "sudo systemctl reload apache2",
+      "Reload Apache to apply phpMyAdmin config",
+    );
+    // Ensure UFW allows HTTP/HTTPS
+    runCommand(
+      "sudo ufw allow 'Apache Full'",
+      "Allow HTTP and HTTPS through firewall",
     );
 
     console.log(
@@ -435,10 +441,25 @@ async function main() {
     );
 
     // --- Step 2: Configure PHP Version for phpMyAdmin ---
-    const apacheConfPath = "/etc/phpmyadmin/apache.conf";
+    const apacheConfPath = "/etc/apache2/conf-available/phpmyadmin.conf";
+    const phpVersionSetPath = "/etc/phpmyadmin/apache.conf";
     try {
       console.log("Reading Apache config for phpMyAdmin...");
-      let apacheConfContent = fs.readFileSync(apacheConfPath, "utf-8");
+      let apacheConfContent = fs.readFileSync(apacheConfPath, "utf8");
+      let phpVersionSetContent = fs.readFileSync(phpVersionSetPath, "utf8");
+
+      // Define the .htaccess override line
+      const allowOverrideLine = "    AllowOverride All";
+
+      // Find the insertion point: inside the <Directory> block
+      const directoryTag =
+        "<Directory /usr/share/phpmyadmin>\n" +
+        "    Options SymLinksIfOwnerMatch\n" +
+        "    DirectoryIndex index.php";
+      const insertIndex =
+        apacheConfContent.indexOf(directoryTag) + directoryTag.length;
+      const insertVersionIndex =
+        phpVersionSetContent.indexOf(directoryTag) + directoryTag.length;
 
       // Define the PHP handler block to insert
       const phpHandlerBlock = `
@@ -446,36 +467,45 @@ async function main() {
         SetHandler "proxy:unix:/var/run/php/php8.3-fpm.sock|fcgi://localhost/"
     </FilesMatch>`;
 
-      // Define the .htaccess override line
-      const allowOverrideLine = "    AllowOverride All";
-
-      // Find the insertion point: inside the <Directory> block
-      const directoryTag = "<Directory /usr/share/phpmyadmin>";
-      const insertIndex =
-        apacheConfContent.indexOf(directoryTag) + directoryTag.length;
-
       // Inject the new lines into the file content string
       apacheConfContent =
         apacheConfContent.slice(0, insertIndex) +
         "\n" +
         allowOverrideLine + // Add AllowOverride
         "\n" +
-        phpHandlerBlock + // Add PHP handler
         apacheConfContent.slice(insertIndex);
+
+      phpVersionSetContent =
+        apacheConfContent.slice(0, insertVersionIndex) +
+        "\n" +
+        phpHandlerBlock +
+        "\n" +
+        phpVersionSetContent.slice(insertVersionIndex);
 
       // Write the modified content back to a temporary file
       fs.writeFileSync("/tmp/phpmyadmin.conf", apacheConfContent);
+      fs.writeFileSync("/tmp/apache.conf", phpVersionSetContent);
 
       // Use sudo to overwrite the original file
       runCommand(
         `sudo mv /tmp/phpmyadmin.conf ${apacheConfPath}`,
         "Updating phpMyAdmin Apache configuration",
       );
+
+      runCommand(
+        `sudo mv /tmp/apache.conf ${phpVersionSetPath}`,
+        "Updating phpMyAdmin PHP Version configuration",
+      );
     } catch (error) {
       console.error(
         `${colors.FgRed}Error modifying ${apacheConfPath}: ${error.message}${colors.Reset}`,
       );
     }
+
+    runCommand(
+      `sudo mysql_secure_installation`,
+      "Setting security rules for the database password",
+    );
 
     // Restart Apache to apply the new configuration
     runCommand("systemctl restart apache2", "Restarting Apache");
