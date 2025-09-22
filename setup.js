@@ -1,4 +1,4 @@
-import { select, checkbox, password } from "@inquirer/prompts";
+import { select, checkbox, password, confirm, input } from "@inquirer/prompts";
 import { execSync } from "child_process";
 import fs from "fs";
 import readline from "readline-sync";
@@ -285,7 +285,6 @@ async function main() {
         { name: "PHP 8.2", value: "8.2" },
         { name: "PHP 8.3", value: "8.3" },
         { name: "PHP 8.4", value: "8.4" },
-        { name: "PHP 8.5", value: "8.5" },
       ],
     });
 
@@ -303,6 +302,7 @@ async function main() {
 
       runCommand("sudo apt-get update -y", "Refreshing Package Manager");
 
+      selectedPhpVersions.push("8.3");
       for (const version of selectedPhpVersions) {
         console.log(`\n--- Installing PHP ${version} ---`);
         const packages = `php${version} php${version}-fpm php${version}-mysql libapache2-mod-php${version} libapache2-mod-fcgid`;
@@ -438,7 +438,57 @@ async function main() {
       `${colors.FgGreen}phpMyAdmin installed successfully.${colors.Reset}`,
     );
 
-    // --- Step 2: Add Extra Security Layer (.htaccess gateway) ---
+    // --- Step 2: Configure PHP Version for phpMyAdmin ---
+    const apacheConfPath = "/etc/phpmyadmin/apache.conf";
+    try {
+      console.log("Reading Apache config for phpMyAdmin...");
+      let apacheConfContent = fs.readFileSync(apacheConfPath, "utf-8");
+
+      // Define the PHP handler block to insert
+      const phpHandlerBlock = `
+    <FilesMatch \\.php$>
+        SetHandler "proxy:unix:/var/run/php/php8.3-fpm.sock|fcgi://localhost/"
+    </FilesMatch>
+`;
+
+      // Define the .htaccess override line
+      const allowOverrideLine = "    AllowOverride All";
+
+      // Find the insertion point: inside the <Directory> block
+      const directoryTag = "<Directory /usr/share/phpmyadmin>";
+      const insertIndex =
+        apacheConfContent.indexOf(directoryTag) + directoryTag.length;
+
+      // Inject the new lines into the file content string
+      apacheConfContent =
+        apacheConfContent.slice(0, insertIndex) +
+        "\n" +
+        allowOverrideLine + // Add AllowOverride
+        "\n" +
+        phpHandlerBlock + // Add PHP handler
+        apacheConfContent.slice(insertIndex);
+
+      // Write the modified content back to a temporary file
+      fs.writeFileSync("/tmp/phpmyadmin.conf.tmp", apacheConfContent);
+
+      // Use sudo to overwrite the original file
+      runCommand(
+        `sudo mv /tmp/phpmyadmin.conf ${apacheConfPath}`,
+        "Updating phpMyAdmin Apache configuration",
+      );
+    } catch (error) {
+      console.error(
+        `${colors.FgRed}Error modifying ${apacheConfPath}: ${error.message}${colors.Reset}`,
+      );
+    }
+
+    // Restart Apache to apply the new configuration
+    runCommand("systemctl restart apache2", "Restarting Apache");
+    console.log(
+      `${colors.FgGreen}phpMyAdmin installed and configured to use PHP ${pmaPhpVersion}.${colors.Reset}`,
+    );
+
+    // --- Step 3: Add Extra Security Layer (.htaccess gateway) ---
     const addHtaccess = await confirm({
       message:
         "Do you want to add an extra layer of password protection to phpMyAdmin (Recommended)?",
@@ -542,4 +592,104 @@ Require valid-user
 }
 
 // Starts the main function.
-main();
+// main();
+async function phpMyAdmin() {
+  // --- Step 1: Installation ---
+  // Acknowledge the interactive part of the installation
+  console.log(
+    `\n${colors.FgYellow}ATTENTION:${colors.Reset} The next step is interactive.` +
+      `\n1. At the 'Configuring phpmyadmin' screen, press SPACE to select 'apache2'.` +
+      `\n2. Press ENTER to select 'Ok'.` +
+      `\n3. Select 'Yes' to configure the database with dbconfig-common.` +
+      `\n4. Enter a password for the phpmyadmin user when prompted.`,
+  );
+  readline.keyInPause("Press any key to continue..."); // Pause script to let user read
+
+  // Install phpMyAdmin and its extensions. The '-y' will handle most prompts, but not the configuration screen.
+  runCommand(
+    "apt-get install -y phpmyadmin php-mbstring php-zip php-gd php-json php-curl",
+    "Installing phpMyAdmin",
+  );
+
+  // Enable the mbstring extension
+  runCommand("phpenmod mbstring", "Enabling PHP mbstring extension");
+  runCommand("systemctl restart apache2", "Restarting Apache");
+
+  // set root user password
+  runCommand(
+    `sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '12345678'"`,
+    "Setting root password to '12345678' for now (You will change it later)",
+  );
+  runCommand(
+    `sudo mysql_secure_installation`,
+    "Setting security rules for the database password",
+  );
+
+  console.log(
+    `${colors.FgGreen}phpMyAdmin installed successfully.${colors.Reset}`,
+  );
+
+  // --- Step 3: Add Extra Security Layer (.htaccess gateway) ---
+  const addHtaccess = await confirm({
+    message:
+      "Do you want to add an extra layer of password protection to phpMyAdmin (Recommended)?",
+  });
+
+  if (addHtaccess) {
+    console.log("\n--- Configuring Apache .htaccess security ---");
+
+    // Prompt for the new username and password
+    const gatewayUser = await input({
+      message: "Enter a username for the security gateway:",
+    });
+    const gatewayPass = await password({
+      message: `Enter a password for ${gatewayUser}:`,
+    });
+
+    // Enable .htaccess overrides for the phpmyadmin directory
+    const apacheConf = `
+<Directory /usr/share/phpmyadmin>
+    AllowOverride All
+</Directory>
+    `;
+    fs.writeFileSync("/tmp/phpmyadmin-override.conf", apacheConf);
+    runCommand(
+      "sudo mv /tmp/phpmyadmin-override.conf /etc/apache2/conf-available/phpmyadmin-override.conf",
+      "Creating phpMyAdmin Apache config override",
+    );
+    runCommand("sudo a2enconf phpmyadmin-override", "Enabling config override");
+
+    // Create the .htaccess file
+    const htaccessContent = `
+AuthType Basic
+AuthName "Restricted Access"
+AuthUserFile /etc/phpmyadmin/.htpasswd
+Require valid-user
+    `;
+    fs.writeFileSync("/tmp/.htaccess", htaccessContent);
+    runCommand(
+      "sudo mv /tmp/.htaccess /usr/share/phpmyadmin/.htaccess",
+      "Creating .htaccess file for phpMyAdmin",
+    );
+
+    // Create the password file using the htpasswd utility
+    runCommand(
+      `sudo htpasswd -c -b /etc/phpmyadmin/.htpasswd ${gatewayUser} ${gatewayPass}`,
+      "Creating gateway user",
+    );
+
+    // Restart Apache to apply all changes
+    runCommand(
+      "systemctl restart apache2",
+      "Restarting Apache to enable security",
+    );
+    console.log(
+      `${colors.FgGreen}Security gateway enabled. You will now need two passwords to log in.${colors.Reset}`,
+    );
+  }
+
+  console.log(
+    `\nphpMyAdmin setup complete. You can access it at http://your_server_ip/phpmyadmin`,
+  );
+}
+phpMyAdmin();
