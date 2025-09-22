@@ -587,13 +587,16 @@ Require valid-user
     let rootPassword, retryRootPassword;
 
     while (!passwordGood) {
-      rootPassword = await password({ message: "Enter MySQL root password" });
+      rootPassword = await password({
+        message: "Enter MySQL root password (Set the password for phpmyadmin)",
+      });
       retryRootPassword = await password({
         message: "Re-type MySQL root password",
       });
 
       if (rootPassword === retryRootPassword) {
         try {
+          console.log(`${colors.FgRed}`);
           execSync(
             `sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${rootPassword}';"`,
             { stdio: "inherit" },
@@ -603,6 +606,8 @@ Require valid-user
           console.error(
             `${colors.FgRed}Failed to set MySQL root password: \n ${error.message}${colors.Reset}`,
           );
+        } finally {
+          console.log(`${colors.Reset}`);
         }
       }
     }

@@ -19,6 +19,17 @@ sudo /tmp/init.sh
 ```
 ---
 
+Sometimes, encountering error:
+```bash
+E: Could not get lock /var/lib/apt/lists/lock. (Held by another process.)
+```
+then use this command to stop the process and run my script again.
+```bash
+sudo service packagekit restart
+```
+
+---
+
 Run each command one by one (if needed) :
 
 ##### 1. Download the master setup script
