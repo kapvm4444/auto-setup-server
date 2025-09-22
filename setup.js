@@ -86,6 +86,8 @@ const runCommand = (command, description) => {
         `${colors.FgGreen}--- SUCCESS: ${description} ---${colors.Reset}`,
       );
       success = true;
+      // Add a blank line after each step for spacing
+      console.log("");
     } catch (error) {
       console.error(
         `${colors.FgRed}--- FAILED: ${description} ---${colors.Reset}`,
@@ -225,6 +227,7 @@ async function main() {
   console.log(
     `\n${colors.FgYellow}Starting installation based on your selections...${colors.Reset}`,
   );
+  console.log("");
 
   //NOTE  -------------------SERVERS
 
@@ -316,6 +319,9 @@ async function main() {
           `sudo systemctl start php${version}-fpm`,
           `Installing PHP ${version} and common extensions`,
         );
+
+        // Enable the mbstring extension
+        runCommand("phpenmod mbstring", "Enabling PHP mbstring extension");
       }
 
       runCommand(
@@ -406,29 +412,19 @@ async function main() {
     // --- Step 1: Installation ---
     // Acknowledge the interactive part of the installation
     console.log(
-      `\n${colors.FgYellow}ATTENTION:${colors.Reset} The next step is interactive.` +
+      `\n${colors.FgRed}ATTENTION: The next step is interactive.` +
         `\n1. At the 'Configuring phpmyadmin' screen, press SPACE to select 'apache2'.` +
         `\n2. Press ENTER to select 'Ok'.` +
         `\n3. Select 'Yes' to configure the database with dbconfig-common.` +
-        `\n4. Enter a password for the phpmyadmin user when prompted.`,
+        `\n4. Enter a password for the phpmyadmin user when prompted.${colors.Reset}`,
     );
-    readline.keyInPause("Press any key to continue..."); // Pause script to let user read
+    readline.keyInPause("Press space-bar to continue...");
 
-    // Install phpMyAdmin and its extensions. The '-y' will handle most prompts, but not the configuration screen.
     runCommand(
       "apt-get install -y phpmyadmin php-mbstring php-zip php-gd php-json php-curl",
       "Installing phpMyAdmin",
     );
 
-    // Enable the mbstring extension
-    runCommand("phpenmod mbstring", "Enabling PHP mbstring extension");
-    runCommand("systemctl restart apache2", "Restarting Apache");
-
-    // set root user password
-    runCommand(
-      `sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '12345678'"`,
-      "Setting root password to '12345678' for now (You will change it later)",
-    );
     runCommand(
       `sudo mysql_secure_installation`,
       "Setting security rules for the database password",
@@ -448,8 +444,7 @@ async function main() {
       const phpHandlerBlock = `
     <FilesMatch \\.php$>
         SetHandler "proxy:unix:/var/run/php/php8.3-fpm.sock|fcgi://localhost/"
-    </FilesMatch>
-`;
+    </FilesMatch>`;
 
       // Define the .htaccess override line
       const allowOverrideLine = "    AllowOverride All";
@@ -469,7 +464,7 @@ async function main() {
         apacheConfContent.slice(insertIndex);
 
       // Write the modified content back to a temporary file
-      fs.writeFileSync("/tmp/phpmyadmin.conf.tmp", apacheConfContent);
+      fs.writeFileSync("/tmp/phpmyadmin.conf", apacheConfContent);
 
       // Use sudo to overwrite the original file
       runCommand(
@@ -484,9 +479,6 @@ async function main() {
 
     // Restart Apache to apply the new configuration
     runCommand("systemctl restart apache2", "Restarting Apache");
-    console.log(
-      `${colors.FgGreen}phpMyAdmin installed and configured to use PHP ${pmaPhpVersion}.${colors.Reset}`,
-    );
 
     // --- Step 3: Add Extra Security Layer (.htaccess gateway) ---
     const addHtaccess = await confirm({
