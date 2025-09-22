@@ -473,10 +473,12 @@ async function main() {
         "\n" +
         allowOverrideLine + // Add AllowOverride
         "\n" +
+        phpHandlerBlock +
         apacheConfContent.slice(insertIndex);
 
       phpVersionSetContent =
         apacheConfContent.slice(0, insertVersionIndex) +
+        allowOverrideLine +
         "\n" +
         phpHandlerBlock +
         "\n" +
