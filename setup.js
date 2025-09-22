@@ -4,13 +4,6 @@ import fs from "fs";
 import readline from "readline-sync";
 import figlet from "figlet";
 
-const clearCmd = () => {
-  //1 sec delay for warnings and info
-  setTimeout(() => {
-    console.clear();
-  }, 1000);
-};
-
 // --- Color Definitions for Node.js ---
 // An object holding ANSI escape codes for different colors.
 const colors = {
@@ -177,7 +170,11 @@ async function main() {
     },
   ]);*/
 
-  clearCmd();
+  console.clear();
+
+  console.log(
+    `${colors.FgCyan}==========  Select The Config for your server  ==========${colors.Reset}`,
+  );
 
   //NEW VERSION OF INQUIRER
   //selecting webserver
@@ -349,7 +346,7 @@ async function main() {
         "Downloading Composer installer",
       );
 
-      const verificationCommand = `HASH=$(curl -sS https://composer.github.io/installer.sig) && php -r "if (hash_file('SHA384', '/tmp/composer-setup.php') === getenv('HASH')) { echo 'Installer verified.'; exit(0); } else { echo 'Installer corrupt.'; exit(1); }"`;
+      const verificationCommand = `HASH=$(curl -sS https://composer.github.io/installer.sig) && php -r "if (hash_file('SHA384', '/tmp/composer-setup.php') === '$HASH') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"`;
 
       try {
         console.log("Verifying installer integrity...");
@@ -370,7 +367,6 @@ async function main() {
   if (tools.includes("NPM (Node Package Manager)")) {
     //DO NOTHING because it is already installed in pre-requisites
   }
-
   //=> PM2
   if (tools.includes("PM2")) {
     runCommand("sudo npm install pm2 -g", "Installing PM2");
