@@ -442,7 +442,9 @@ async function main() {
 
     // --- Step 2: Configure PHP Version for phpMyAdmin ---
     const apacheConfPath = "/etc/apache2/conf-available/phpmyadmin.conf";
+    const apacheConfEnabledPath = "/etc/apache2/conf-enabled/phpmyadmin.conf";
     const phpVersionSetPath = "/etc/phpmyadmin/apache.conf";
+
     try {
       console.log("Reading Apache config for phpMyAdmin...");
       let apacheConfContent = fs.readFileSync(apacheConfPath, "utf8");
@@ -464,20 +466,21 @@ async function main() {
       // Define the PHP handler block to insert
       const phpHandlerBlock = `
     <FilesMatch \\.php$>
-        SetHandler "proxy:unix:/var/run/php/php8.3-fpm.sock|fcgi://localhost/"
+        SetHandler "proxy:unix:/var/run/php/php8.4-fpm.sock|fcgi://localhost/"
     </FilesMatch>`;
 
       // Inject the new lines into the file content string
       apacheConfContent =
         apacheConfContent.slice(0, insertIndex) +
         "\n" +
-        allowOverrideLine + // Add AllowOverride
+        allowOverrideLine +
         "\n" +
         phpHandlerBlock +
         apacheConfContent.slice(insertIndex);
 
       phpVersionSetContent =
         apacheConfContent.slice(0, insertVersionIndex) +
+        "\n" +
         allowOverrideLine +
         "\n" +
         phpHandlerBlock +
@@ -487,6 +490,7 @@ async function main() {
       // Write the modified content back to a temporary file
       fs.writeFileSync("/tmp/phpmyadmin.conf", apacheConfContent);
       fs.writeFileSync("/tmp/apache.conf", phpVersionSetContent);
+      fs.writeFileSync("/tmp/apache.conf", apacheConfEnabledPath);
 
       // Use sudo to overwrite the original file
       runCommand(
@@ -496,6 +500,11 @@ async function main() {
 
       runCommand(
         `sudo mv /tmp/apache.conf ${phpVersionSetPath}`,
+        "Updating phpMyAdmin PHP Version configuration",
+      );
+
+      runCommand(
+        `sudo mv /tmp/apache.conf ${apacheConfEnabledPath}`,
         "Updating phpMyAdmin PHP Version configuration",
       );
     } catch (error) {
@@ -572,6 +581,30 @@ Require valid-user
       console.log(
         `${colors.FgGreen}Security gateway enabled. You will now need two passwords to log in.${colors.Reset}`,
       );
+    }
+
+    let passwordGood = false;
+    let rootPassword, retryRootPassword;
+
+    while (!passwordGood) {
+      rootPassword = await password({ message: "Enter MySQL root password" });
+      retryRootPassword = await password({
+        message: "Re-type MySQL root password",
+      });
+
+      if (rootPassword === retryRootPassword) {
+        try {
+          execSync(
+            `sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${rootPassword}';"`,
+            { stdio: "inherit" },
+          );
+          passwordGood = true;
+        } catch (error) {
+          console.error(
+            `${colors.FgRed}Failed to set MySQL root password: \n ${error.message}${colors.Reset}`,
+          );
+        }
+      }
     }
 
     console.log(
