@@ -4,7 +4,22 @@ Use following commands in your new born server to start the script
 
 ## Commands
 
-Run each command one by one:
+---
+
+### Run all steps at once
+
+If you prefer, you can run all the above commands together:
+
+```bash
+wget -O /tmp/init.sh --no-cache https://raw.githubusercontent.com/kapvm4444/auto-setup-server/main/init.sh && \
+wget -O /tmp/setup.js --no-cache https://raw.githubusercontent.com/kapvm4444/auto-setup-server/main/setup.js && \
+wget -O /tmp/package.json --no-cache https://raw.githubusercontent.com/kapvm4444/auto-setup-server/main/package.json && \
+chmod +x /tmp/init.sh && \
+sudo /tmp/init.sh
+```
+---
+
+Run each command one by one (if needed) :
 
 ##### 1. Download the master setup script
 ```bash
@@ -31,16 +46,4 @@ chmod +x /tmp/init.sh
 sudo /tmp/init.sh
 ```
 
----
 
-### Run all steps at once
-
-If you prefer, you can run all the above commands together:
-
-```bash
-wget -O /tmp/init.sh --no-cache https://raw.githubusercontent.com/kapvm4444/auto-setup-server/main/init.sh && \
-wget -O /tmp/setup.js --no-cache https://raw.githubusercontent.com/kapvm4444/auto-setup-server/main/setup.js && \
-wget -O /tmp/package.json --no-cache https://raw.githubusercontent.com/kapvm4444/auto-setup-server/main/package.json && \
-chmod +x /tmp/init.sh && \
-sudo /tmp/init.sh
-```
